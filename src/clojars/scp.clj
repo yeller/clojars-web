@@ -97,25 +97,25 @@
     (doseq [metafile metadata
             :when (not= (:name metafile) "maven-metadata.xml")
             :let [jarmap (maven/pom-to-map (:file metafile))
-                  names (jar-names jarmap)]]
-      (if-let [jarfile (some jarfiles names)]
-        (do
-          (doseq [file (map :file files)]
-            (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id})
-                              account file))
-          (.println (.err ctx) (str "\nDeploying " (:group jarmap) "/"
-                                    (:name jarmap) " " (:version jarmap)))
-            (db/add-jar account jarmap true)
-            (aether/deploy :coordinates [(keyword (:group jarmap)
-                                                  (:name jarmap))
-                                         (:version jarmap)]
-                           :jar-file jarfile
-                           :pom-file (:file metafile)
-                           :repository {"local" (file-repo (:repo config))}
-                           :transfer-listener
-                           (bound-fn [e] (@#'aether/default-listener-fn e)))
-            (db/add-jar account jarmap))
-        (throw (Exception. (str "You need to give me one of: " names)))))
+                  names (jar-names jarmap)
+                  jarfile (some jarfiles names)]]
+      (when-not jarfile
+        (throw (Exception. (str "You need to give me one of: " names))))
+      (doseq [file (map :file files)]
+        (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id})
+                          account file))
+      (.println (.err ctx) (str "\nDeploying " (:group jarmap) "/"
+                                (:name jarmap) " " (:version jarmap)))
+      (db/add-jar account jarmap true)
+      (aether/deploy :coordinates [(keyword (:group jarmap)
+                                            (:name jarmap))
+                                   (:version jarmap)]
+                     :jar-file jarfile
+                     :pom-file (:file metafile)
+                     :repository {"local" (file-repo (:repo config))}
+                     :transfer-listener
+                     (bound-fn [e] (@#'aether/default-listener-fn e)))
+      (db/add-jar account jarmap))
     (.println (.err ctx) (str "\nSuccess! Your jars are now available from "
                               "http://clojars.org/"))
     (.flush (.err ctx))))

@@ -67,29 +67,19 @@
                           :version version}
                     file (io/file (config :repo) group
                                   artifact version filename)]
-                ;;TODO once db is removed this whole if block
-                ;;can be reduced to the common
-                ;;(try (save-to-file...) (catch ...))
-                (if (.endsWith filename ".pom")
+                (ev/record-deploy {:group groupname
+                                   :artifact-id artifact
+                                   :version version} account file)
+                (when (.endsWith filename ".pom")
                   (let [contents (slurp body)
                         pom-info (merge (maven/pom-to-map
                                          (StringReader. contents)) info)]
-                    (add-jar account pom-info)
-                    (try
-                      (save-to-file file contents)
-                      (catch java.io.IOException e
-                        (.delete file)
-                        (throw e))))
-                  (try
-                    (save-to-file file body)
-                    (catch java.io.IOException e
-                      (.delete file)
-                      (throw e))))
-                ;;Be consistent with scp only recording pom or jar
-                (when (some #(.endsWith filename %) [".pom" ".jar"])
-                  (ev/record-deploy {:group groupname
-                                     :artifact-id artifact
-                                     :version version} account file)))
+                    (add-jar account pom-info)))
+                (try
+                  (save-to-file file body)
+                  (catch java.io.IOException e
+                    (.delete file)
+                    (throw e))))
               {:status 201 :headers {} :body nil}
               (catch Exception e
                 (pst e)
