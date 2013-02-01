@@ -90,9 +90,8 @@
 
 (defn finish-deploy [#^NGContext ctx, files]
   (let [account (first (.getArgs ctx))
-        act-group (str "org.clojars." account)
-        metadata (filter #(#{"xml" "pom"} (:suffix %)) files)
-        jars     (filter #(#{"jar"}       (:suffix %)) files)
+        metadata (filter #(#{"xml" "pom" "asc"} (:suffix %)) files)
+        jars     (filter #(#{"jar"}             (:suffix %)) files)
         jarfiles (into {} (map (juxt :name :file) jars))]
 
     (doseq [metafile metadata
