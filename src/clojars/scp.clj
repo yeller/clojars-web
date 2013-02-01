@@ -100,6 +100,9 @@
                   names (jar-names jarmap)]]
       (if-let [jarfile (some jarfiles names)]
         (do
+          (doseq [file (map :file files)]
+            (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id})
+                              account file))
           (.println (.err ctx) (str "\nDeploying " (:group jarmap) "/"
                                     (:name jarmap) " " (:version jarmap)))
             (db/add-jar account jarmap true)
@@ -111,12 +114,7 @@
                            :repository {"local" (file-repo (:repo config))}
                            :transfer-listener
                            (bound-fn [e] (@#'aether/default-listener-fn e)))
-            (db/add-jar account jarmap)
-            ;; TODO: doseq over files here
-            (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id})
-                              account jarfile)
-            (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id})
-                              account (:file metafile)))
+            (db/add-jar account jarmap))
         (throw (Exception. (str "You need to give me one of: " names)))))
     (.println (.err ctx) (str "\nSuccess! Your jars are now available from "
                               "http://clojars.org/"))
