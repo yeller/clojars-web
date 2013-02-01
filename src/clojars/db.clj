@@ -200,15 +200,15 @@
   (let [record {:email email, :user username, :password (bcrypt password)
                 :ssh_key ssh-key, :pgp_key pgp-key}
         group (str "org.clojars." username)]
+    (ev/record :user (clojure.set/rename-keys record {:user :username
+                                                      :ssh_key :ssh-key
+                                                      :pgp_key :pgp-key}))
+    (ev/record :membership {:group-id group :username username :added-by nil})
     (insert users (values (assoc record
                             :created (get-time)
                             ;;TODO: remove salt field
                             :salt "")))
     (insert groups (values {:name group :user username}))
-    (ev/record :user (clojure.set/rename-keys record {:user :username
-                                                      :ssh_key :ssh-key
-                                                      :pgp_key :pgp-key}))
-    (ev/record :membership {:group-id group :username username :added-by nil})
     (write-key-file (:key-file config))))
 
 (defn update-user [account email username password ssh-key pgp-key]
@@ -219,21 +219,21 @@
         fields (if (empty? password)
                  fields
                  (assoc fields :password (bcrypt password)))]
-    (update users
-            (set-fields (assoc fields :salt ""))
-            (where {:user account}))
     (ev/record :user (clojure.set/rename-keys fields {:user :username
                                                       :ssh_key :ssh-key
-                                                      :pgp_key :pgp-key})))
+                                                      :pgp_key :pgp-key}))
+    (update users
+            (set-fields (assoc fields :salt ""))
+            (where {:user account})))
   (write-key-file (:key-file config)))
 
 (defn add-member [group-id username added-by]
+  (ev/record :membership {:group-id group-id :username username
+                          :added-by added-by})
   (insert groups
           (values {:name group-id
                    :user username
-                   :added_by added-by}))
-  (ev/record :membership {:group-id group-id :username username
-                          :added-by added-by}))
+                   :added_by added-by})))
 
 (defn check-and-add-group [account groupname]
   (when-not (re-matches #"^[a-z0-9-_.]+$" groupname)
