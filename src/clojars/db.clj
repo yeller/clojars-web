@@ -265,25 +265,6 @@
                    :authors    (str/join ", " (map #(.replace % "," "")
                                                    authors))})))
 
-(defn update-jar [account {:keys [group name version
-                                  description homepage authors]}]
-  (let [[{:keys [promoted_at]}] (select jars (fields :promoted_at)
-                                        (where {:group_name group
-                                                :jar_name name
-                                                :version version}))]
-    (when promoted_at
-      (throw (Exception. "Already promoted."))))
-  (update jars
-          (set-fields {:user       account
-                       :created    (get-time)
-                       :description description
-                       :homepage   homepage
-                       :authors    (str/join ", " (map #(.replace % "," "")
-                                                       authors))})
-          (where {:group_name group
-                  :jar_name   name
-                  :version    version})))
-
 (defn- validate [x re message]
   (when-not (re-matches re x)
     (throw (Exception. (str message " (" re ")")))))
