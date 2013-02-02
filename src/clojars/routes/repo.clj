@@ -19,16 +19,6 @@
        (sort-by (comp - (memfn last-modified)))
        (map (memfn getName))))
 
-(defn find-jar
-  ([group-id artifact-id]
-     (find-jar group-id artifact-id (first (versions group-id artifact-id))))
-  ([group-id artifact-id version]
-     (try
-       (maven/pom-to-map (io/file (config :repo) group-id artifact-id version
-                                  (format "%s-%s.pom" artifact-id version)))
-       (catch java.io.FileNotFoundException e
-         nil))))
-
 (defn group-artifacts [group-id]
   (.list (io/file (config :repo) group-id)))
 
