@@ -123,7 +123,8 @@
       (db/add-jar account jarmap true)
       (aether/deploy-artifacts :artifacts (keys artifact-map)
                                :files artifact-map
-                               :repository [(file-repo (:repo config))]
+                               :repository [["local"
+                                             (file-repo (:repo config))]]
                                :transfer-listener
                                (bound-fn [e]
                                  (@#'aether/default-listener-fn e)))
