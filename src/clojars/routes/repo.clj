@@ -57,9 +57,6 @@
                           :version version}
                     file (io/file (config :repo) group
                                   artifact version filename)]
-                (ev/record-deploy {:group groupname
-                                   :artifact-id artifact
-                                   :version version} account file)
                 (if (.endsWith filename ".pom")
                   (let [contents (slurp body)
                         pom-info (merge (maven/pom-to-map
@@ -75,7 +72,10 @@
                     (save-to-file file body)
                     (catch java.io.IOException e
                       (.delete file)
-                      (throw e)))))
+                      (throw e))))
+                (ev/record-deploy {:group groupname
+                                   :artifact-id artifact
+                                   :version version} account file))
               {:status 201 :headers {} :body nil}
               (catch Exception e
                 (pst e)
