@@ -88,17 +88,29 @@
 (defn file-repo [path]
   (.toString (.toURI (File. path))))
 
+(defn artifact-map [jarmap jarfile metafile signatures]
+  (let [coords [(symbol (:group jarmap) (:name jarmap)) (:version jarmap)]]
+    (merge {(into coords [:extension "jar"]) jarfile
+            (into coords [:extension "pom"]) metafile}
+           (if-let [jarsig (signatures (str jarfile ".asc"))]
+             {(into coords [:extension "jar.asc"]) jarsig})
+           (if-let [pomsig (signatures (str metafile ".asc"))]
+             {(into coords [:extension "pom.asc"]) pomsig}))))
+
 (defn finish-deploy [#^NGContext ctx, files]
   (let [account (first (.getArgs ctx))
-        metadata (filter #(#{"xml" "pom" "asc"} (:suffix %)) files)
-        jars     (filter #(#{"jar"}             (:suffix %)) files)
-        jarfiles (into {} (map (juxt :name :file) jars))]
+        metadata   (filter #(#{"xml" "pom"} (:suffix %)) files)
+        jars       (filter #(#{"jar"}       (:suffix %)) files)
+        jarfiles (into {} (map (juxt :name :file) jars))
+        signatures (filter #(#{"asc"} (:suffix %)) files)
+        signatures (into {} (map (juxt :name :file) signatures))]
 
     (doseq [metafile metadata
             :when (not= (:name metafile) "maven-metadata.xml")
             :let [jarmap (maven/pom-to-map (:file metafile))
                   names (jar-names jarmap)
-                  jarfile (some jarfiles names)]]
+                  jarfile (some jarfiles names)
+                  artifact-map (artifact-map jarfile metafile signatures)]]
       (when-not jarfile
         (throw (Exception. (str "You need to give me one of: " names))))
       (doseq [file (map :file files)]
@@ -107,14 +119,12 @@
       (.println (.err ctx) (str "\nDeploying " (:group jarmap) "/"
                                 (:name jarmap) " " (:version jarmap)))
       (db/add-jar account jarmap true)
-      (aether/deploy :coordinates [(keyword (:group jarmap)
-                                            (:name jarmap))
-                                   (:version jarmap)]
-                     :jar-file jarfile
-                     :pom-file (:file metafile)
-                     :repository {"local" (file-repo (:repo config))}
-                     :transfer-listener
-                     (bound-fn [e] (@#'aether/default-listener-fn e)))
+      (aether/deploy-artifacts :artifacts (keys artifact-map)
+                               :files artifact-map
+                               :repository [(file-repo (:repo config))]
+                               :transfer-listener
+                               (bound-fn [e]
+                                 (@#'aether/default-listener-fn e)))
       (db/add-jar account jarmap))
     (.println (.err ctx) (str "\nSuccess! Your jars are now available from "
                               "http://clojars.org/"))
