@@ -88,13 +88,13 @@
 (defn file-repo [path]
   (.toString (.toURI (File. path))))
 
-(defn artifact-map [jarmap jarfile metafile signatures]
+(defn artifact-map [jarmap jarfile jarname meta signatures]
   (let [coords [(symbol (:group jarmap) (:name jarmap)) (:version jarmap)]]
     (merge {(into coords [:extension "jar"]) jarfile
-            (into coords [:extension "pom"]) metafile}
-           (if-let [jarsig (signatures (str jarfile ".asc"))]
+            (into coords [:extension "pom"]) (:file meta)}
+           (if-let [jarsig (signatures (str jarname ".asc"))]
              {(into coords [:extension "jar.asc"]) jarsig})
-           (if-let [pomsig (signatures (str metafile ".asc"))]
+           (if-let [pomsig (signatures (str (:name meta) ".asc"))]
              {(into coords [:extension "pom.asc"]) pomsig}))))
 
 (defn finish-deploy [#^NGContext ctx, files]
@@ -110,7 +110,9 @@
             :let [jarmap (maven/pom-to-map (:file metafile))
                   names (jar-names jarmap)
                   jarfile (some jarfiles names)
-                  artifact-map (artifact-map jarfile metafile signatures)]]
+                  artifact-map (artifact-map jarmap jarfile (first names)
+                                             metafile signatures)]]
+
       (when-not jarfile
         (throw (Exception. (str "You need to give me one of: " names))))
       (doseq [file (map :file files)]
