@@ -7,22 +7,26 @@
             [clojars.web.safe-hiccup :refer [form-to]]))
 
 (defn login-form [login_failed username]
-  (html-doc nil "Login"
+  (html-doc
+   nil
+   "Login"
    [:h1 "Login"]
    [:p "Don't have an account? "
     (link-to "/register" "Sign up!")]
 
    (when login_failed
-     [:div [:p {:class :error} "Incorrect username and/or password."]
-      [:p "If you have not logged in since "
-       [:a {:href "https://groups.google.com/group/clojure/browse_thread/thread/5e0d48d2b82df39b"}
-        "the insecure password hashes were wiped"]
-       ", please use the " [:a {:href "/forgot-password"} "forgot password"]
-       " functionality to reset your password."]])
-   (form-to [:post "/login"]
-     (label :username "Username or email:")
-     (text-field :username username)
-     (label :password "Password:")
-     (password-field :password)
-     (link-to "/forgot-password" "Forgot password?") [:br]
-     (submit-button "Login"))))
+     [:div.alert.alert-block
+      [:h4 "Login failed"]
+      [:p "Incorrect username and/or password."]])
+   [:div.span5
+    [:div.row
+     (form-to [:post "/login"]
+              [:div.input-prepend
+               [:span.add-on [:i.icon-user]]
+               (text-field {:class "span5" :placeholder "Username or email"} :username username)]
+              [:br]
+              [:div.input-prepend
+               [:span.add-on [:i.icon-lock]]
+               (password-field {:class "span5" :placeholder "Password"} :password)]
+              [:span.help-block.small.pull-right (link-to "/forgot-password" "Forgot password?")]
+              (submit-button {:class "btn btn-large"} "Login"))]]))

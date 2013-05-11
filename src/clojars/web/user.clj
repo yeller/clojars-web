@@ -1,45 +1,74 @@
 (ns clojars.web.user
   (:require [clojars.config :as config]
             [clojars.db :refer [find-user group-membernames add-user
-                                reserved-names update-user jars-by-username
+                                reserved-names update-user jars-by-groupname
                                 find-groupnames find-user-by-user-or-email
                                 rand-string split-keys]]
             [clojars.web.common :refer [html-doc error-list jar-link
                                         flash group-link]]
             [clojure.string :refer [blank?]]
-            [hiccup.element :refer [link-to unordered-list]]
+            [hiccup.element :refer [link-to unordered-list image]]
             [hiccup.form :refer [label text-field
                                  password-field text-area
                                  submit-button]]
             [clojars.web.safe-hiccup :refer [form-to]]
             [ring.util.response :refer [response redirect]]
             [valip.core :refer [validate]]
-            [valip.predicates :as pred])
+            [valip.predicates :as pred]
+            [clavatar.core :as clavatar])
   (:import [org.apache.commons.mail SimpleEmail]))
 
 (defn register-form [ & [errors email username ssh-key pgp-key]]
-  (html-doc nil "Register"
-            [:h1 "Register"]
-            (error-list errors)
-            (form-to [:post "/register"]
-                     (label :email "Email:")
-                     [:input {:type :email :name :email :id
-                              :email :value email}]
-                     (label :username "Username:")
-                     (text-field :username username)
-                     (label :password "Password:")
-                     (password-field :password)
-                     (label :confirm "Confirm password:")
-                     (password-field :confirm)
-                     (label :ssh-key "SSH public key:")
-                     " (" (link-to
-                           "http://wiki.github.com/ato/clojars-web/ssh-keys"
-                           "what's this?") ")"
-                     (text-area :ssh-key ssh-key)
-                     [:p.hint "Entering multiple SSH keys? Put them on separate lines."]
-                     (label :pgp-key "PGP public key:")
-                     (text-area :pgp-key pgp-key)
-                     (submit-button "Register"))))
+  (html-doc
+   nil
+   "Register"
+   [:h1 "Register"]
+   (error-list errors)
+   [:div.row
+    (form-to [:post "/register"]
+             [:div.span5
+              [:div.input-prepend
+               [:span.add-on [:i.icon-envelope]]
+               [:input#email.span5 {:type :email :name :email :value email
+                                    :placeholder "Email"}]]
+              [:br]
+              [:div.input-prepend
+               [:span.add-on [:i.icon-user]]
+               (text-field {:class "span5" :placeholder "Username"}
+                           :username username)]
+              [:br]
+              [:div.input-prepend
+               [:span.add-on [:i.icon-lock]]
+               (password-field {:class "span5" :placeholder "Password"}
+                               :password)]
+              [:br]
+              [:div.input-prepend
+               [:span.add-on [:i.icon-lock]]
+               (password-field {:class "span5" :placeholder "Confirm password"}
+                               :confirm)]]
+             [:div.span12
+              (label :pgp-key "PGP public key:")
+              (text-area {:class "input-block-level" :rows "5"} :pgp-key pgp-key)]
+             [:div.span12
+              [:div#scp-info.accordion
+               [:div.accordion-group
+                [:div.accordion-heading
+                 (link-to {:class "accordion-toggle"
+                           :data-toggle "collapse"
+                           :data-parent "#scp-info"}
+                          "#collapse-one" "Optional scp info")]
+                [:div#collapse-one.accordion-body.collapse
+                 [:div.accordion-inner
+                  [:span.help-block.pull-right
+                   (link-to
+                    "http://wiki.github.com/ato/clojars-web/ssh-keys"
+                    "what's this?")]
+                  (label :ssh-key "SSH public key:")
+                  (text-area {:class "input-block-level"
+                              :rows "5"} :ssh-key ssh-key)
+                  [:span.help-block "Entering multiple SSH keys? Put them on separate lines."]]]]]]
+             [:div.span12
+              (submit-button {:class "btn btn-large"} "Register")])]))
 
 (defn conj-when [coll test x]
   (if test
@@ -75,24 +104,55 @@
 
 (defn profile-form [account flash-msg & [errors]]
   (let [user (find-user account)]
-    (html-doc account "Profile"
-              (flash flash-msg)
-              [:h1 "Profile"]
-              (error-list errors)
-              (form-to [:post "/profile"]
-                       (label :email "Email:")
-                       [:input {:type :email :name :email :id
-                                :email :value (user :email)}]
-                       (label :password "Password:")
-                       (password-field :password)
-                       (label :confirm "Confirm password:")
-                       (password-field :confirm)
-                       (label :ssh-key "SSH public key:")
-                       (text-area :ssh-key (user :ssh_key))
-                       [:p.hint "Entering multiple SSH keys? Put them on separate lines."]
-                       (label :pgp-key "PGP public key:")
-                       (text-area :pgp-key (user :pgp_key))
-                       (submit-button "Update")))))
+    (html-doc
+     account "Profile"
+     (flash flash-msg)
+     [:h1 "Profile"]
+     (error-list errors)
+     [:div.row
+      (form-to [:post "/profile"]
+               [:div.span5
+                [:div.input-prepend
+                 [:span.add-on [:i.icon-envelope]]
+                 [:input#email.span5 {:type :email
+                                      :name :email
+                                      :value (:email user)
+                                      :placeholder "Email"}]]
+                [:br]
+                [:div.input-prepend
+                 [:span.add-on [:i.icon-lock]]
+                 (password-field {:class "span5" :placeholder "Password"}
+                                 :password)]
+                [:br]
+                [:div.input-prepend
+                 [:span.add-on [:i.icon-lock]]
+                 (password-field {:class "span5" :placeholder "Confirm password"}
+                                 :confirm)]]
+               [:div.span12
+                (label :pgp-key "PGP public key:")
+                (text-area {:class "input-block-level" :rows "5"}
+                           :pgp-key (:pgp-key user))]
+               [:div.span12
+                [:div#scp-info.accordion
+                 [:div.accordion-group
+                  [:div.accordion-heading
+                   (link-to {:class "accordion-toggle"
+                             :data-toggle "collapse"
+                             :data-parent "#scp-info"}
+                            "#collapse-one" "Optional scp info")]
+                  [:div#collapse-one.accordion-body.collapse
+                   [:div.accordion-inner
+                    [:span.help-block.pull-right
+                     (link-to
+                      "http://wiki.github.com/ato/clojars-web/ssh-keys"
+                      "what's this?")]
+                    (label :ssh-key "SSH public key:")
+                    (text-area {:class "input-block-level"
+                                :rows "5"}
+                               :ssh-key (:ssh-key user))
+                    [:span.help-block "Entering multiple SSH keys? Put them on separate lines."]]]]]]
+               [:div.span12
+                (submit-button {:class "btn btn-large"} "Update")])])))
 
 (defn update-profile [account {:keys [email password confirm ssh-key pgp-key]}]
   (let [pgp-key (and pgp-key (.trim pgp-key))]
@@ -108,20 +168,36 @@
               (assoc :flash "Profile updated."))))))
 
 (defn show-user [account user]
-  (html-doc account (user :user)
-    [:h1 (user :user)]
-    [:h2 "Jars"]
-    (unordered-list (map jar-link (jars-by-username (user :user))))
-    [:h2 "Groups"]
-    (unordered-list (map group-link (find-groupnames (user :user))))))
+  (html-doc
+   account
+   (user :user)
+   [:h1 [:span (image (clavatar/gravatar (:email user)
+                                         :size 200
+                                         :default :mm))]
+    (user :user)]
+   [:div.row
+    [:div.span6
+     [:h2 "Groups"]
+     (unordered-list (map group-link (find-groupnames (user :user))))]
+    [:div.span6
+     [:h2 "Artifacts"]
+     (unordered-list (for [groupname (find-groupnames (user :user))
+                           artifact (jars-by-groupname groupname)]
+                       (jar-link artifact)))]]))
 
 (defn forgot-password-form []
-  (html-doc nil "Forgot password?"
-    [:h1 "Forgot password?"]
-    (form-to [:post "/forgot-password"]
-      (label :email-or-username "Email or username:")
-      (text-field :email-or-username)
-      (submit-button "Send new password"))))
+  (html-doc
+   nil
+   "Forgot password?"
+   [:h1 "Forgot password?"]
+   (form-to [:post "/forgot-password"]
+            [:div.span5
+             [:div.input-prepend
+              [:span.add-on [:i.icon-user]]
+              [:input#email.span5 {:type :text :name :email-or-username
+                                   :placeholder "Username or email"}]]
+             [:br]
+             (submit-button {:class "btn btn-large"} "Send new password")])))
 
 (defn send-out [email]
   (.send email))

@@ -2,50 +2,41 @@
 body {
     background: #3e653c url(../images/header-bg.png) repeat-x;
     font-family: "Helvetica Neue", Arial, "Liberation Sans", FreeSans, sans-serif;
-    line-height: 150%;
 }
 
-.header h1 a {
+header .navbar-inner {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background-image: none;
+    background-color: transparent;
+}
+
+header h1 a {
     background: url(../images/header.png) no-repeat;
-    height: 160px;
+    height: 145px;
     display: block;
     text-indent: -10000px;
 }
 
-.header h2 {
-    display: none;
+header h1 small {
+    color: #555;
+    margin-left: 210px;
+    margin-top: -30px;
+    display: block;
+    text-shadow: 2px 2px 8px #666;
+    font-style: italic;
 }
 
-.article h1 {
-    color: #336;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    font-size: 30px;
+header .navbar .nav > li > a {
+    color: #07293A;
+    padding: 0;
+    margin: 10px 18px 0 0;
+    text-shadow: none;
+    line-height: 19px;
 }
 
-.article h2 {
-    color: #336;
-    margin-bottom: 20px;
-    margin-top: 40px;
-}
-
-
-a {
-    color: #339;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
-p {
-    margin-top: 1em;
-    margin-bottom: 1em;
-}
-
-.article {
-    font-size: 20px;
+article .container, footer .container{
     padding-left: 40px;
     padding-right: 40px;
     padding-top: 20px;
@@ -62,6 +53,29 @@ p {
     border-radius: 10px;
 }
 
+.nav-tabs .active > a {
+    background: #a58879;
+    color: #eeeeee;
+    border-color: #a58879 transparent #a58879 #a58879;
+}
+
+/*
+a {
+    color: #339;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+p {
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+*/
+
+/*
 nav {
     float: right;
     display: block;
@@ -155,26 +169,8 @@ textarea {
     height: 8em;
     margin-top: 5px;
 }
-
-footer {
-    display: block;
-    text-align: center;
-    color: #ccc;
-    font-weight: bold;
-}
-
-footer a {
-    color: #ccc;
-    margin: 20px;
-}
-
-.useit h3 {
-    text-align: left;
-    margin-bottom: 20px;
-    color: #777;
-}
-
-.useit div {
+*/
+pre {
     background: #1f1f1f;
     color: white;
     padding: 20px;
@@ -189,10 +185,10 @@ footer a {
     border-radius: 10px;
 }
 
-.useit div .tag {
+.tag {
     color: #ffcfaf;
 }
-
+/*
 .useit div .string {
     color: #cc9393;
 }
@@ -281,3 +277,4 @@ p.hint {
     float: right;
     font-size: 0.6em;
 }
+*/

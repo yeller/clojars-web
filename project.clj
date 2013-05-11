@@ -27,7 +27,9 @@
                  [valip "0.2.0"]
                  [clucy "0.3.0"]
                  [org.clojure/tools.nrepl "0.2.3"]
-                 [org.bouncycastle/bcpg-jdk15on "1.47"]]
+                 [org.bouncycastle/bcpg-jdk15on "1.47"]
+                 [org.webjars/bootstrap "2.3.1"]
+                 [clavatar "0.2.1"]]
   :profiles {:test {:resource-paths ["test-resources"]
                     :dependencies [[kerodon "0.0.7"]
                                    [nailgun-shim "0.0.1"]]}

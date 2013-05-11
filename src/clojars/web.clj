@@ -15,7 +15,7 @@
             [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
             [compojure.core :refer [defroutes GET POST PUT ANY context routes]]
             [compojure.handler :refer [site]]
-            [compojure.route :refer [not-found]]
+            [compojure.route :refer [not-found resources]]
             [cemerick.friend :as friend]
             [cemerick.friend.credentials :as creds]
             [cemerick.friend.workflows :as workflows]
@@ -48,6 +48,11 @@
   ;; since they both catch /:identifier
   user/routes
   (GET "/error" _ (throw (Exception. "What!? You really want an error?")))
+
+  (resources "/bootstrap/"
+             {:root "META-INF/resources/webjars/bootstrap/2.3.1/"})
+  (resources "/jquery/"
+             {:root "META-INF/resources/webjars/jquery/1.9.0/"})
   (PUT "*" _ {:status 405 :headers {} :body "Did you mean to use /repo?"})
   (ANY "*" _
        (try-account

@@ -60,65 +60,85 @@
                        (submit-button "Promote")))))))
 
 (defn show-jar [account jar recent-versions count]
-  (html-doc account (str (:jar_name jar) " " (:version jar))
-            [:div.grid_9.alpha
-             [:h1 (jar-link jar)]]
-            [:div.grid_3.omega
-             [:small.downloads
-              (let [stats (stats/all)]
-                [:p
-                 "Downloads: "
-                 (stats/download-count stats
-                                       (:group_name jar)
-                                       (:jar_name jar))
-                 [:br]
-                 "This version: "
-                 (stats/download-count stats
-                                       (:group_name jar)
-                                       (:jar_name jar)
-                                       (:version jar))])]]
-            [:div.grid_12.alpha.omega
-             (:description jar)
-             (when-let [homepage (:homepage jar)]
-               [:p.homepage (safe-link-to homepage homepage)])
-             [:div {:class "useit"}
-              [:div {:class "lein"}
-               [:h3 "leiningen"]
-               [:pre
-                (tag "[")
-                (jar-name jar)
-                [:span {:class :string} " \""
-                 (:version jar) "\""] (tag "]") ]]
-
-              [:div {:class "maven"}
-               [:h3 "maven"]
-               [:pre
-                (tag "<dependency>\n")
-                (tag "  <groupId>") (:group_name jar) (tag "</groupId>\n")
-                (tag "  <artifactId>") (:jar_name jar) (tag "</artifactId>\n")
-                (tag "  <version>") (:version jar) (tag "</version>\n")
-                (tag "</dependency>")]]
-              (let [pom (jar-to-pom-map jar)]
-                (list
-                 [:p "Pushed by " (user-link (:user jar)) " on "
-                  [:span {:title (str (java.util.Date. (:created jar)))} (simple-date (:created jar))]
-                  (if-let [url (commit-url pom)]
-                    [:span.commit-url " with " (link-to url "this commit")])]
-                 (fork-notice jar)
-                 (promotion-details account jar)
-                 (dependency-section "dependencies" "dependencies"
-                                     (remove #(not= (:scope %) "compile") (:dependencies pom)))
-                 (when-not pom
-                   [:p.error "Oops. We hit an error opening the metadata POM file for this jar "
-                    "so some details are not available."])))
-              [:h3 "recent versions"]
-              [:ul#versions
-               (for [v recent-versions]
-                 [:li (link-to (url-for (assoc jar
-                                          :version (:version v)))
-                               (:version v))])]
-              [:p (link-to (str (jar-url jar) "/versions")
-                           (str "show all versions (" count " total)"))]]]))
+  (html-doc
+   account
+   (str (:jar_name jar) " " (:version jar))
+   [:ul.breadcrumb
+    [:li
+     (group-link (:group_name jar))
+     [:span.divider "/"]]
+    [:li.active (:jar_name jar)]]
+   [:div.row
+    [:div.span8
+     [:h1 (jar-name jar)]]
+    [:div.span4
+     [:small.downloads
+      (let [stats (stats/all)]
+        [:p.text-right
+         "Downloads: "
+         [:span.badge.badge-info
+          (stats/download-count stats
+                                (:group_name jar)
+                                (:jar_name jar))]
+         [:br]
+         "This version: "
+         [:span.badge.badge-success
+          (stats/download-count stats
+                                (:group_name jar)
+                                (:jar_name jar)
+                                (:version jar))]])]]]
+   [:p (:description jar)]
+   (when-let [homepage (:homepage jar)]
+     [:p.homepage (safe-link-to homepage homepage)])
+   [:div.tabbable
+    [:ul.nav.nav-tabs
+     [:li.active
+      [:a {:href "#lein"
+           :data-toggle "tab"} "leiningen"]]
+     [:li
+      [:a {:href "#maven"
+           :data-toggle "tab"} "maven"]]]
+    [:div.tab-content
+     [:div#lein.tab-pane.fade.in.active
+      [:div.row
+       [:div.span12
+        [:pre
+         (tag "[")
+         (jar-name jar)
+         [:span {:class :string} " \""
+          (:version jar) "\""] (tag "]") ]]]]
+     [:div#maven.tab-pane.fade
+      [:div.row
+       [:div.span12
+        [:pre
+         (tag "<dependency>\n")
+         (tag "  <groupId>") (:group_name jar) (tag "</groupId>\n")
+         (tag "  <artifactId>") (:jar_name jar) (tag "</artifactId>\n")
+         (tag "  <version>") (:version jar) (tag "</version>\n")
+         (tag "</dependency>")]]]]]]
+   (let [pom (jar-to-pom-map jar)]
+     (list
+      [:p (user-link (:user jar)) " deployed on "
+       [:span {:title (str (java.util.Date. (:created jar)))} (simple-date (:created jar))]
+       (if-let [url (commit-url pom)]
+         [:span.commit-url " from " (link-to url "this commit")])]
+      (fork-notice jar)
+      (promotion-details account jar)
+      (when-not pom
+        [:p.alert.alert-info "Oops. We hit an error opening the metadata POM file for this jar so some details are not available."]))
+     [:div.row
+      [:div.span6
+       [:h3 "Recent versions"]
+       [:ul#versions
+        (for [v recent-versions]
+          [:li (link-to (url-for (assoc jar
+                                   :version (:version v)))
+                        (:version v))])]
+       [:p (link-to (str (jar-url jar) "/versions")
+                    (str "show all versions (" count " total)"))]]
+      [:div.span6
+       (dependency-section "Dependencies" "dependencies"
+                           (remove #(not= (:scope %) "compile") (:dependencies pom)))]])))
 
 (defn show-versions [account jar versions]
   (html-doc account (str "all versions of "(jar-name jar))

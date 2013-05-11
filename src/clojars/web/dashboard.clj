@@ -1,46 +1,82 @@
 (ns clojars.web.dashboard
   (:require [clojars.web.common :refer [html-doc jar-link group-link tag]]
-            [clojars.db :refer [jars-by-username find-groupnames recent-jars]]
-            [hiccup.element :refer [unordered-list link-to]]))
+            [clojars.db :refer [jars-by-groupname find-groupnames recent-jars find-user]]
+            [hiccup.element :refer [unordered-list link-to image]]
+            [clavatar.core :as clavatar]))
 
 (defn index-page [account]
-  (html-doc account nil
-    [:p "Clojars is a " [:strong "dead easy"] " community repository for"
-     " open source " (link-to "http://clojure.org/" "Clojure")
-     " libraries. "]
-    [:div {:class "useit"}
-     [:div {:class "lein"}
-      [:h3 "pushing with leiningen"]
-      [:pre
-       (tag "$") " lein pom\n"
-       (tag "$") " scp pom.xml mylib.jar clojars@clojars.org:"]]
-
-     "It's the " [:strong "default repository"] " for "
-     (link-to "http://leiningen.org" "Leiningen")
-     ", but you can use it with other build tools like "
-     (link-to "http://maven.apache.org/" "Maven") " as well."
-     [:div {:class "maven"}
-      [:h3 "maven repository"]
-      [:pre
-       (tag "<repository>\n")
-       (tag "  <id>") "clojars.org" (tag "</id>\n")
-       (tag "  <url>") "http://clojars.org/repo" (tag "</url>\n")
-       (tag "</repository>")]]]
-
-    [:p "To " [:strong "get started"] " pushing your own jars "
-     (link-to "/register" "create an account")
-     " and then check out the "
-     (link-to "http://wiki.github.com/ato/clojars-web/tutorial"
-              "tutorial") ". Alternatively, "
-     (link-to "/projects" "browse") " the repository."]
-    [:h2 "Recently pushed jars"]
-    (unordered-list (map jar-link (recent-jars)))))
+  (html-doc
+   account
+   nil
+   [:div.row
+    [:div.span12
+     [:h1 "Clojars is a " [:strong "dead easy"] " community repository for"
+      " open source " (link-to "http://clojure.org/" "Clojure")
+      " libraries. "]
+     [:div.tabbable
+      [:ul.nav.nav-tabs
+       [:li.active
+        [:a {:href "#lein"
+             :data-toggle "tab"} "leiningen"]]
+       [:li
+        [:a {:href "#maven"
+             :data-toggle "tab"} "maven"]]]
+      [:div.tab-content
+       [:div#lein.tab-pane.fade.in.active
+        [:div.row
+         [:div.span6
+          [:h2 "Use"]
+          [:pre (tag "[") "ring \"1.1.2\"" (tag "]")]]
+         [:div.span6
+          [:h2 "Share"]
+          [:ol
+           [:li
+            [:p (link-to "/register" "Create an account")]]
+           [:li
+            [:pre (tag "$") " lein deploy clojars"]]]
+          [:p "See an extended example at the " (link-to "http://wiki.github.com/ato/clojars-web/tutorial" "tutorial")]]]]
+       [:div#maven.tab-pane.fade
+        [:div.row
+         [:div.span6
+          [:h2 "Use"]
+          [:pre
+           (tag "<repository>\n")
+           (tag "  <id>") "clojars.org" (tag "</id>\n")
+           (tag "  <url>") "http://clojars.org/repo" (tag "</url>\n")
+           (tag "</repository>")]
+          [:pre
+           (tag "<dependency>\n")
+           (tag "  <groupId>") "ring" (tag "</groupId>\n")
+           (tag "  <artifactId>") "ring" (tag "</artifactId>\n")
+           (tag "  <version>") "1.1.2" (tag "</version>\n")
+           (tag "</dependency>\n")]]
+         [:div.span6
+          [:h2 "Share"]
+          [:ol
+           [:li
+            [:p (link-to "/register" "Create an account")]]
+           [:li
+            [:pre "...."]]]]]]]]
+     [:h2 "Recently pushed jars"]
+     (unordered-list (map jar-link (recent-jars)))
+     (link-to {:class "btn btn-success"} "/projects" "Browse the repository >>")]] ))
 
 (defn dashboard [account]
-  (html-doc account "Dashboard"
-    [:h1 (str "Dashboard (" account ")")]
-    [:h2 "Your jars"]
-    (unordered-list (map jar-link (jars-by-username account)))
-    (link-to "http://wiki.github.com/ato/clojars-web/pushing" "add new jar")
-    [:h2 "Your groups"]
-    (unordered-list (map group-link (find-groupnames account)))))
+  (html-doc
+   account
+   account
+   [:h1 [:span (image (clavatar/gravatar (:email (find-user account))
+                                         :size 200
+                                         :default :mm))]
+    account " dashboard"]
+   [:div.row
+    [:div.span6
+     [:h2 "Groups"]
+     (unordered-list (map group-link (find-groupnames account)))]
+    [:div.span6
+     [:h2 "Artifacts"]
+     (unordered-list (for [groupname (find-groupnames account)
+                           artifact (jars-by-groupname groupname)]
+                       (jar-link artifact)))
+     (link-to "http://wiki.github.com/ato/clojars-web/pushing" "add new jar")]])
+  )
