@@ -27,7 +27,8 @@
             [clojars.routes.user :as user]
             [clojars.routes.artifact :as artifact]
             [clojars.routes.group :as group]
-            [clojars.routes.repo :as repo]))
+            [clojars.routes.repo :as repo]
+            [clojars.routes.legacy :as legacy]))
 
 (defroutes main-routes
   (GET "/" _
@@ -47,10 +48,11 @@
                   (raw (slurp (io/resource "security.html"))))))
   session/routes
   group/routes
-  artifact/routes
-  ;; user routes must go after artifact routes
-  ;; since they both catch /:identifier
   user/routes
+  artifact/routes
+  ;; legacy routes must go after artifact routes
+  ;; since they both catch /:identifier
+  legacy/routes
   (GET "/error" _ (throw (Exception. "What!? You really want an error?")))
   (PUT "*" _ {:status 405 :headers {} :body "Did you mean to use /repo?"})
   (ANY "*" _

@@ -170,7 +170,7 @@
                                           (remove #(not= (:scope %) "compile") (:dependencies pom-map)))]
                   (when-not (empty? dependencies)
                     [:li dependencies]))
-                (when-let [homepage (:homepage jar)]
+                (when-let [homepage (:url jar)]
                   [:li.homepage
                    [:h4 "Homepage"]
                    (safe-link-to homepage homepage)])

@@ -15,10 +15,9 @@
    :version (or (.getVersion model)
                 (-> model .getParent .getVersion))
    :description (.getDescription model)
-   :homepage (.getUrl model)
    :url (.getUrl model)
-   :licenses (.getLicenses model)
    :scm (.getScm model)
+   :licenses (.getLicenses model)
    :authors (vec (map #(.getName %) (.getContributors model)))
    :dependencies (vec (map
                        (fn [d] {:group_name (.getGroupId d)
@@ -44,13 +43,30 @@
 (defn snapshot-version
   "Get snapshot version from maven-metadata.xml used in pom filename"
   [file]
-  (let [versioning (-> (read-metadata file) .getVersioning .getSnapshot)]
-    (str (.getTimestamp versioning) "-" (.getBuildNumber versioning))))
+  (let [snapshot (-> (read-metadata file) .getVersioning .getSnapshot)]
+    (str (.getTimestamp snapshot) "-" (.getBuildNumber snapshot))))
 
 (defn directory-for
   "Directory for a jar under repo"
   [{:keys [group_name jar_name version]}]
-  (apply io/file (concat [(config :repo)] (split group_name #"\.") [jar_name version])))
+  (apply io/file
+         (if version
+           (concat [(config :repo)] (split group_name #"\.") [jar_name version])
+           (concat [(config :repo)] (split group_name #"\.") [jar_name]))))
+
+(defn recommended-version
+  [group-id artifact-id]
+  (let [file (io/file (directory-for {:group_name group-id :jar_name artifact-id})
+                      "maven-metadata.xml")
+        versioning (-> (read-metadata file) .getVersioning)]
+    (or (.getRelease versioning)
+        (last (.getVersions versioning)))))
+
+(defn versions
+  [group-id artifact-id]
+  (let [file (io/file (directory-for {:group_name group-id :jar_name artifact-id})
+                      "maven-metadata.xml")]
+    (-> (read-metadata file) .getVersioning .getVersions)))
 
 (defn snapshot-pom-file [{:keys [jar_name version] :as jar}]
   (let [metadata-file (io/file (directory-for jar) "maven-metadata.xml")
@@ -73,8 +89,7 @@
         user-repo (->> (str url) (re-find github-re) second)]
     user-repo))
 
-(defn commit-url [pom-map]
-  (let [scm (:scm pom-map)
-        url (and scm (.getUrl scm))
+(defn commit-url [{:keys [scm]}]
+  (let [url (and scm (.getUrl scm))
         base-url (re-find #"https?://github.com/[^/]+/[^/]+" (str url))]
     (if (and base-url (.getTag scm)) (str base-url "/commit/" (.getTag scm)))))

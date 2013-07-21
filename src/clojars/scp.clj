@@ -82,8 +82,8 @@
 (defn jar-names
   "Construct a few possible name variations a jar might have."
   [jarmap]
-  [(str (:name jarmap) "-" (:version jarmap) ".jar")
-   (str (:name jarmap) ".jar")])
+  [(str (:jar_name jarmap) "-" (:version jarmap) ".jar")
+   (str (:jar_name jarmap) ".jar")])
 
 (defn file-repo [path]
   (str (.toURI (File. path))))
@@ -102,25 +102,23 @@
       (let [jarfile (some jarfiles names)]
         (when-not jarfile
           (throw (Exception. (str "You need to give me one of: " names))))
-        (.println (.err ctx) (str "\nDeploying " (:group jarmap) "/"
-                                  (:name jarmap) " " (:version jarmap)))
-        (let [{:keys [group name version]} jarmap]
-          (ev/validate-deploy group name version (first names)))
-        (db/add-jar account jarmap)
-        (aether/deploy :coordinates [(keyword (:group jarmap)
-                                              (:name jarmap))
-                                     (:version jarmap)]
-                       :jar-file jarfile
-                       :pom-file (:file metafile)
-                       :repository {"local" (file-repo (:repo config))}
-                       :transfer-listener
-                       (bound-fn [e] (@#'aether/default-listener-fn e)))
-                ;; TODO: doseq over files here
-        (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id
-                                                   :group :group-id})
+        (.println (.err ctx) (str "\nDeploying " (:group_name jarmap) "/"
+                                  (:jar_name jarmap) " " (:version jarmap)))
+        (let [{:keys [group_name jar_name version]} jarmap]
+          (ev/validate-deploy group_name jar_name version (first names))
+          (db/check-and-add-group account group_name)
+          (db/add-jar account jarmap)
+          (aether/deploy :coordinates [(keyword group_name jar_name) version]
+                         :jar-file jarfile
+                         :pom-file (:file metafile)
+                         :repository {"local" (file-repo (:repo config))}
+                         :transfer-listener
+                         (bound-fn [e] (@#'aether/default-listener-fn e))))
+        (ev/record-deploy (set/rename-keys jarmap {:jar_name :artifact-id
+                                                   :group_name :group-id})
                           account jarfile)
-        (ev/record-deploy (set/rename-keys jarmap {:name :artifact-id
-                                                   :group :group-id})
+        (ev/record-deploy (set/rename-keys jarmap {:jar_name :artifact-id
+                                                   :group_name :group-id})
                           account (:file metafile))))
     (.println (.err ctx) (str "\nSuccess! Your jars are now available from "
                               "http://clojars.org/"))

@@ -15,6 +15,7 @@
     (is (= "0.0.4" (:version m)))
     (is (= "fake" (:group m)))
     (is (= "child" (:name m)))))
+     (:dependencies (pom-to-map (.toString (io/resource "test-maven/test-maven.pom"))))
 
 (deftest directory-for-handles-normal-group-name
   (is (= (io/file (config :repo) "fake" "test" "1.0.0")

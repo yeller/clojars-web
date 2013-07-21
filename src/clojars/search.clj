@@ -41,7 +41,7 @@
                 (update-in [:licenses] #(mapv (comp :name bean) %)))
         ;; TODO: clucy forces its own :_content on you
         content (string/join " " ((apply juxt content-fields) pom))
-        doc (assoc (dissoc pom :homepage :dependencies :scm)
+        doc (assoc (dissoc pom :dependencies :scm)
               :at (.lastModified pom-file)
               :_content content)]
     (binding [clucy/*analyzer* analyzer]

@@ -1,6 +1,6 @@
 (ns clojars.web.group
   (:require [clojars.web.common :refer [html-doc jar-link user-link error-list]]
-            [clojars.db :refer [jars-by-groupname]]
+            [clojars.db :refer [projects-by-groupname]]
             [clojars.auth :refer [authorized?]]
             [hiccup.element :refer [unordered-list]]
             [hiccup.form :refer [text-field submit-button]]
@@ -11,7 +11,7 @@
     [:div.small-section.col-md-6.col-lg-6.col-sm-6.col-xs-12
      [:h1 (str groupname " group")]
      [:h2 "Projects"]
-     (unordered-list (map jar-link (jars-by-groupname groupname)))
+     (unordered-list (map jar-link (projects-by-groupname groupname)))
      [:h2 "Members"]
      (unordered-list (map user-link membernames))
      (error-list errors)

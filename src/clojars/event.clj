@@ -38,27 +38,8 @@
 (defn event-log-file [type]
   (io/file (config :event-dir) (str (name type) ".clj")))
 
-(defn record [type event]
-  (let [filename (event-log-file type)
-        content (prn-str (assoc event :at (:at event (java.util.Date.))))]
-    (locking #'record
-      (spit filename content :append true))))
-
-(defn record-deploy [{:keys [group-id artifact-id version]} deployed-by file]
-  (when (.endsWith (str file) ".pom")
-    (with-open [index (clucy/disk-index (config :index-path))]
-      (search/index-pom index file)))
-  (record :deploy {:group-id group-id
-                   :artifact-id artifact-id
-                   :version version
-                   :deployed-by deployed-by
-                   :filename (str file)
-                   :sha1 (DigestUtils/shaHex (io/input-stream file))}))
-
 (defonce users (atom {}))
-
 (defonce memberships (atom {}))
-
 (defonce deploys (atom {}))
 
 (defn add-user [users {:keys [username email] :as user}]
@@ -72,8 +53,33 @@
 (defn add-user-membership [users {:keys [group-id username]}]
   (update-in users [username :groups] (fnil conj #{}) group-id))
 
-(defn add-deploy [deploys {:keys [group-id artifact-id] :as deploy}]
-  (assoc deploys (str group-id "/" artifact-id) deploy))
+(defn add-deploy [deploys {:keys [group-id artifact-id version] :as deploy}]
+  (update-in deploys [group-id artifact-id version]
+             (fnil conj []) deploy))
+
+(defn record [type event]
+  (let [filename (event-log-file type)
+        event (assoc event :at (:at event (java.util.Date.)))
+        content (prn-str event)]
+    (locking #'record
+      (spit filename content :append true))
+    (condp = type
+      :deploy (swap! deploys add-deploy event)
+      :user (swap! users add-user event)
+      :membership (do (swap! memberships add-member event)
+                      (swap! users add-user-membership event)))))
+
+(defn record-deploy [{:keys [group-id artifact-id version]} deployed-by file]
+  (when (.endsWith (str file) ".pom")
+    (with-open [index (clucy/disk-index (config :index-path))]
+      (search/index-pom index file)))
+  (record :deploy {:group-id group-id
+                   :artifact-id artifact-id
+                   :version version
+                   :deployed-by deployed-by
+                   :filename (str file)
+                   :sha1 (DigestUtils/shaHex (io/input-stream file))}))
+
 
 (defn load-users [file]
   (with-open [r (io/reader file)]
@@ -87,7 +93,7 @@
 
 (defn load-deploys [file]
   (with-open [r (io/reader file)]
-    (swap! users #(reduce add-deploy % (map read-string (line-seq r))))))
+    (swap! deploys #(reduce add-deploy % (map read-string (line-seq r))))))
 
 (defn load []
   (println "Loading users, memberships, and deploys from event logs...")
