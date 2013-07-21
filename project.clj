@@ -1,7 +1,7 @@
 (defproject clojars-web "0.14.2-SNAPSHOT"
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.cli "0.2.1"]
-                 [org.apache.maven/maven-model "3.0.4"
+                 [org.apache.maven/maven-model "3.1.0"
                   :exclusions
                   [org.codehaus.plexus/plexus-utils]]
                  [com.cemerick/pomegranate "0.0.13"
@@ -28,13 +28,9 @@
                  [clucy "0.3.0"]
                  [org.clojure/tools.nrepl "0.2.3"]
                  [org.bouncycastle/bcpg-jdk15on "1.47"]]
-  :profiles {:test {:resource-paths ["test-resources"]
-                    :dependencies [[kerodon "0.0.7"]
-                                   [nailgun-shim "0.0.1"]]}
-             :dev {:dependencies [[kerodon "0.0.7"]
+  :profiles {:dev {:dependencies [[kerodon "0.0.7"]
                                   [nailgun-shim "0.0.1"]]
-                   ;; TODO: set test resources in fixture w/ with-redefs
-                   :resource-paths ["local-resources"]}}
+                   :resource-paths ["dev-resources"]}}
   :plugins [[lein-ring "0.8.5"]]
   :aliases {"migrate" ["run" "-m" "clojars.db.migrate"]}
   :ring {:handler clojars.web/clojars-app}

@@ -34,9 +34,9 @@
   (help/delete-file-recursively help/local-repo)
   (help/delete-file-recursively help/local-repo2)
   (aether/deploy
-   :coordinates '[org.clojars.dantheman/test "1.0.0"]
+   :coordinates '[org.clojars.dantheman/dtm "0.0.1"]
    :jar-file (io/file (io/resource "test.jar"))
-   :pom-file (io/file (io/resource "test-0.0.1/test.pom"))
+   :pom-file (io/file (io/resource "dtm-0.0.1/dtm-0.0.1.pom"))
    :repository {"test" {:url (str "http://localhost:" test-port "/repo")
                         :username "dantheman"
                         :password "password"}}
@@ -46,11 +46,11 @@
                                              "org"
                                              "clojars"
                                              "dantheman"
-                                             "test"
-                                             "1.0.0")))))
-  (is (= '{[org.clojars.dantheman/test "1.0.0"] nil}
+                                             "dtm"
+                                             "0.0.1")))))
+  (is (= '{[org.clojars.dantheman/dtm "0.0.1"] nil}
          (aether/resolve-dependencies
-          :coordinates '[[org.clojars.dantheman/test "1.0.0"]]
+          :coordinates '[[org.clojars.dantheman/dtm "0.0.1"]]
           :repositories {"test" {:url
                                  (str "http://localhost:" test-port "/repo")}}
           :local-repo help/local-repo2)))
@@ -59,7 +59,7 @@
       (has (status? 200))
       (within [:article [:ul enlive/last-of-type] [:li enlive/last-child] :a]
               (has (text? "dantheman")))
-      (follow "org.clojars.dantheman/test")
+      (follow "org.clojars.dantheman/dtm")
       (has (status? 200))
       (within [:article [:p.homepage enlive/last-of-type]]
               (has (text? "https://example.org")))))

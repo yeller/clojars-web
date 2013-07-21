@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.java.io :as io]
             [clojars.event :as ev]
+            [clojars.maven :as maven]
             [clojars.config :refer [config]]
             [korma.db :refer [defdb transaction rollback]]
             [korma.core :refer [defentity select group fields order join
@@ -94,115 +95,73 @@
                         (join groups (= :users.user :groups.user))
                         (where {:groups.name groupname}))))
 
-(defn jars-by-username [username]
-  (exec-raw [(str
-              "select j.* "
-              "from jars j "
-              "join "
-              "(select group_name, jar_name, max(created) as created "
-              "from jars "
-              "group by group_name, jar_name) l "
-              "on j.group_name = l.group_name "
-              "and j.jar_name = l.jar_name "
-              "and j.created = l.created "
-              "where j.user = ?"
-              "order by j.group_name asc, j.jar_name asc")
-             [username]]
-            :results))
+(defn projects-by-groupname [group-id]
+  (let [project {:group_name group-id}]
+    (->> (apply io/file (config :repo) (str/split group-id #"\."))
+         (.listFiles)
+         (filter (memfn isDirectory))
+         (map #(assoc project :jar_name (.getName %))))))
 
-(defn jars-by-groupname [groupname]
-    (exec-raw [(str
-              "select j.* "
-              "from jars j "
-              "join "
-              "(select jar_name, max(created) as created "
-              "from jars "
-              "group by group_name, jar_name) l "
-              "on j.jar_name = l.jar_name "
-              "and j.created = l.created "
-              "where j.group_name = ? "
-              "order by j.group_name asc, j.jar_name asc")
-             [groupname]]
-              :results))
+(defn jars-by-username [username]
+  (concat (for [group (find-groupnames username)]
+            (projects-by-groupname group))))
 
 (defn recent-versions [group-id artifact-id]
-  (->> (io/file (config :repo) group-id artifact-id)
-       (.listFiles)
-       (filter (memfn isDirectory))
-       (map str)))
-
-(defn recent-jars [] ; index
-  (exec-raw (str
-             "select j.* "
-             "from jars j "
-             "join "
-             "(select group_name, jar_name, max(created) as created "
-             "from jars "
-             "group by group_name, jar_name) l "
-             "on j.group_name = l.group_name "
-             "and j.jar_name = l.jar_name "
-             "and j.created = l.created "
-             "order by l.created desc "
-             "limit 5")
-            :results))
+  (reverse (maven/versions group-id artifact-id)))
 
 ;; rename to find-latest-jar? should the special snapshot handling be
 ;; in another defn?
-(defn find-jar ; index
-  ([groupname jarname]
-     (or (first (select jars
-                        (where (and {:group_name groupname
-                                     :jar_name jarname}
-                                    (raw "version not like '%-SNAPSHOT'")))
-                        (order :created :desc)
-                        (limit 1)))
-         (first (select jars
-                        (where (and {:group_name groupname
-                                     :jar_name jarname
-                                     :version [like "%-SNAPSHOT"]}))
-                        (order :created :desc)
-                        (limit 1)))))
-  ([groupname jarname version]
-     (first (select jars
-                    (where (and {:group_name groupname
-                                 :jar_name jarname
-                                 :version version}))
-                    (order :created :desc)
-                    (limit 1)))))
+(defn find-jar
+  ([group-id artifact-id]
+     (try
+       (find-jar group-id artifact-id (maven/recommended-version group-id artifact-id))
+       (catch java.io.IOException e
+         ;;catch and hide exception so that callee doesn't die
+         )))
+  ([group-id artifact-id version]
+     (try
+       (if-let [artifact (maven/jar-to-pom-map {:group_name group-id
+                                                :jar_name artifact-id
+                                                :version version})]
+         (let [deploy (-> @ev/deploys
+                          (get-in [group-id artifact-id version])
+                          last)]
+           (-> artifact
+               (assoc :created (:at deploy))
+               (assoc :user (:deployed-by deploy)))))
+       (catch java.io.IOException e
+         ;;catch and hide exception so that callee doesn't die
+         ))))
 
-(defn all-projects [offset-num limit-num] ; index
-  (select jars
-    (modifier "distinct")
-    (fields :group_name :jar_name)
-    (order :group_name :asc)
-    (order :jar_name :asc)
-    (limit limit-num)
-    (offset offset-num)))
+(defn all-projects []
+  (for [f (file-seq (io/file (config :repo)))
+        :when (and (= (.getName f) "maven-metadata.xml")
+                   (not (re-find #"-SNAPSHOT" (.getParent f))))
+        :let [m (maven/read-metadata f)]]
+    {:group_name (.getGroupId m)
+     :jar_name (.getArtifactId m)
+     :created (.lastModified f)}))
 
-(defn count-all-projects [] ; index
-  (-> (exec-raw
-        "select count(*) count from (select distinct group_name, jar_name from jars order by group_name, jar_name)"
-        :results)
-      first
-      :count))
+(defn recent-jars []
+  (take 5 (sort-by (comp - :created) (all-projects))))
 
-(defn count-projects-before [s] ; index
-  (-> (exec-raw
-       [(str "select count(*) count from"
-              " (select distinct group_name, jar_name from jars"
-              "  order by group_name, jar_name)"
-              " where group_name || '/' || jar_name < ?")
-        [s]] :results)
-      first
-      :count))
+(defn count-all-projects []
+  (count (all-projects)))
 
-(defn browse-projects [current-page per-page] ; index
+(defn count-projects-before [s]
+  (count (take-while #(< 0 (compare s %))
+                     (sort
+                      (map #(str (:group_name %) "/" (:jar_name %))
+                           (all-projects))))))
+
+(defn browse-projects [current-page per-page]
   (vec
-    (map
-      #(find-jar (:group_name %) (:jar_name %))
-      (all-projects
-        (* (- current-page 1) per-page)
-        per-page))))
+   (map
+    #(find-jar (:group_name %) (:jar_name %))
+    (take per-page
+          (drop (* (- current-page 1) per-page)
+                (sort-by #(str (:group_name %) "/" (:jar_name %))
+                         (all-projects)))))))
 
 (defn add-user [email username password ssh-key pgp-key]
   (let [record {:email email, :user username, :password (bcrypt password)
@@ -259,16 +218,15 @@
         (throw (Exception. (str "You don't have access to the "
                                 groupname " group.")))))))
 
-(defn add-jar [account {:keys [group name version
-                               description homepage authors]}]
-  (check-and-add-group account group)
+(defn add-jar [account {:keys [group_name jar_name version
+                               description url authors]}]
   (insert jars
-          (values {:group_name group
-                   :jar_name   name
+          (values {:group_name group_name
+                   :jar_name   jar_name
                    :version    version
                    :user       account
                    :created    (get-time)
                    :description description
-                   :homepage   homepage
+                   :homepage   url
                    :authors    (str/join ", " (map #(.replace % "," "")
                                                    authors))})))

@@ -26,6 +26,4 @@
         (view/forgot-password params))
 
   (GET "/users/:username" [username]
-       (show username))
-  (GET "/:username" [username]
        (show username)))

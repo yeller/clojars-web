@@ -80,7 +80,7 @@
                                        (:version jar))])]]
             [:div.grid_12.alpha.omega
              (:description jar)
-             (when-let [homepage (:homepage jar)]
+             (when-let [homepage (:url jar)]
                [:p.homepage (safe-link-to homepage homepage)])
              [:div {:class "useit"}
               [:div {:class "lein"}
@@ -102,7 +102,7 @@
               (let [pom (jar-to-pom-map jar)]
                 (list
                  [:p "Pushed by " (user-link (:user jar)) " on "
-                  [:span {:title (str (java.util.Date. (:created jar)))} (simple-date (:created jar))]
+                  [:span (simple-date (:created jar))]
                   (if-let [url (commit-url pom)]
                     [:span.commit-url " with " (link-to url "this commit")])]
                  (fork-notice jar)
