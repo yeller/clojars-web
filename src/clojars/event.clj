@@ -43,9 +43,13 @@
 (defonce deploys (atom {}))
 
 (defn add-user [users {:keys [username email] :as user}]
-  (-> users
-      (update-in [username] merge user)
-      (update-in [email] merge user)))
+  (let [original-user (get-in users [username])
+        original-email (:email original-user)
+        user (merge original-user user)]
+    (-> users
+        (assoc username user)
+        (dissoc original-email)
+        (assoc email user))))
 
 (defn add-member [memberships {:keys [group-id username]}]
   (update-in memberships [group-id] (fnil conj #{}) username))
