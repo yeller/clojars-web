@@ -78,22 +78,32 @@
       (.renameTo new-file (File. path)))))
 
 (defn find-user [username]
-  (first (select users (where {:user username}))))
+  (if-let [u (get @ev/users username)]
+    (-> u
+        (clojure.set/rename-keys {:username :user
+                                  :ssh-key :ssh_key
+                                  :pgp-key :pgp_key})
+        (dissoc :groups))))
 
 (defn find-user-by-user-or-email [username-or-email]
-  (first (select users (where (or {:user username-or-email}
-                                  {:email username-or-email})))))
+  (if-let [u (get @ev/users username-or-email
+                  (get @ev/users username-or-email))]
+    (-> u
+        (clojure.set/rename-keys {:username :user
+                                  :ssh-key :ssh_key
+                                  :pgp-key :pgp_key})
+        (dissoc :groups))))
 
 (defn find-groupnames [username]
-  (map :name (select groups (fields :name) (where {:user username}))))
+  (get-in @ev/users [username :groups]))
 
 (defn group-membernames [groupname]
-  (map :user (select groups (fields :user) (where {:name groupname}))))
+  (get-in @ev/memberships [groupname]))
 
 (defn group-keys [groupname]
-  (map :pgp_key (select users (fields :pgp_key)
-                        (join groups (= :users.user :groups.user))
-                        (where {:groups.name groupname}))))
+  (filter identity
+          (map (comp :pgp_key find-user)
+               (group-membernames groupname))))
 
 (defn projects-by-groupname [group-id]
   (let [project {:group_name group-id}]
@@ -178,9 +188,9 @@
     (ev/record :membership {:group-id group :username username :added-by nil})
     (write-key-file (:key-file config))))
 
-(defn update-user [account email username password ssh-key pgp-key]
+(defn update-user [account email password ssh-key pgp-key]
   (let [fields {:email email
-                :user username
+                :user account
                 :ssh_key ssh-key
                 :pgp_key pgp-key}
         fields (if (empty? password)

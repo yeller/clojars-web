@@ -103,7 +103,7 @@
                                      :pgp-key pgp-key}
                            (update-user-validations confirm))]
       (profile-form account nil (apply concat (vals  errors)))
-      (do (update-user account email account password ssh-key pgp-key)
+      (do (update-user account email password ssh-key pgp-key)
           (-> (redirect "/profile")
               (assoc :flash "Profile updated."))))))
 
@@ -145,7 +145,7 @@
 (defn forgot-password [{:keys [email-or-username]}]
   (when-let [user (find-user-by-user-or-email email-or-username)]
     (let [new-password (rand-string 15)]
-      (update-user (user :user) (user :email) (user :user) new-password
+      (update-user (user :user) (user :email) new-password
                    (user :ssh_key) (user :pgp_key))
       (send-mail (user :email)
         "Password reset for Clojars"

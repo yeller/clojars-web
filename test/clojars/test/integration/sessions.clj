@@ -3,7 +3,7 @@
             [kerodon.core :refer :all]
             [kerodon.test :refer :all]
             [clojars.test.integration.steps :refer :all]
-            [clojars.db :as db]
+            [clojars.event :as ev]
             [clojars.web :as web]
             [clojars.test.test-helper :as help]
             [net.cgrand.enlive-html :as enlive]
@@ -36,11 +36,9 @@
                 (has (text? "login"))))))
 
 (deftest user-with-password-wipe-gets-message
-  (-> (session web/clojars-app)
-      (register-as "fixture" "fixture@example.org" "password" ""))
-  (korma/update db/users
-                (korma/set-fields {:password ""})
-                (korma/where {:user "fixture"}))
+  (ev/record :user {:email "fixture@example.org"
+                    :user "fixture"
+                    :password ""})
   (-> (session web/clojars-app)
       (login-as "fixture" "password")
       (follow-redirect)

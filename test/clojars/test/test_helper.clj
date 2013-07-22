@@ -3,6 +3,7 @@
   (:require [clojars.db :as db]
             [clojars.db.migrate :as migrate]
             [clojars.config :refer [config]]
+            [clojars.event :as ev]
             [korma.db :as kdb]
             [clucy.core :as clucy]
             [clojure.test :as test]
@@ -51,6 +52,9 @@
   (delete-file-recursively (io/file (config :repo)))
   (delete-file-recursively (io/file (config :event-dir)))
   (.mkdirs (io/file (config :event-dir)))
+  (reset! ev/users {})
+  (reset! ev/memberships {})
+  (reset! ev/deploys {})
   (delete-file-recursively (io/file (config :stats-dir)))
   (.mkdirs (io/file (config :stats-dir)))
   (make-download-count! {})
