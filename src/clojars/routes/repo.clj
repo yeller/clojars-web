@@ -13,28 +13,6 @@
             [clj-stacktrace.repl :refer [pst]])
   (:import java.io.StringReader))
 
-(defn versions [group-id artifact-id]
-  (->> (.listFiles (io/file (config :repo) group-id artifact-id))
-       (filter (memfn isDirectory))
-       (sort-by (comp - (memfn last-modified)))
-       (map (memfn getName))))
-
-(defn find-jar
-  ([group-id artifact-id]
-     (find-jar group-id artifact-id (first (versions group-id artifact-id))))
-  ([group-id artifact-id version]
-     (try
-       (maven/pom-to-map (io/file (config :repo) group-id artifact-id version
-                                  (format "%s-%s.pom" artifact-id version)))
-       (catch java.io.FileNotFoundException e
-         nil))))
-
-(defn group-artifacts [group-id]
-  (.list (io/file (config :repo) group-id)))
-
-(defn user-artifacts [username]
-  (mapcat group-artifacts (:groups (@ev/users username))))
-
 (defn save-to-file [sent-file input]
   (-> sent-file
       .getParentFile
