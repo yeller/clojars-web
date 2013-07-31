@@ -78,7 +78,7 @@
       (.renameTo new-file (File. path)))))
 
 (defn find-user [username]
-  (if-let [u (get @ev/users username)]
+  (if-let [u (get-in @ev/cache [:users username])]
     (-> u
         (clojure.set/rename-keys {:username :user
                                   :ssh-key :ssh_key
@@ -86,8 +86,11 @@
         (dissoc :groups))))
 
 (defn find-user-by-user-or-email [username-or-email]
-  (if-let [u (get @ev/users username-or-email
-                  (get @ev/users username-or-email))]
+  (if-let [u (or (get-in @ev/cache [:users username-or-email])
+                 (get-in @ev/cache
+                         [:users (get-in @ev/cache
+                                         [:username-by-email
+                                          username-or-email])]))]
     (-> u
         (clojure.set/rename-keys {:username :user
                                   :ssh-key :ssh_key
@@ -95,10 +98,10 @@
         (dissoc :groups))))
 
 (defn find-groupnames [username]
-  (get-in @ev/users [username :groups]))
+  (get-in @ev/cache [:users username :groups]))
 
 (defn group-membernames [groupname]
-  (get-in @ev/memberships [groupname]))
+  (get-in @ev/cache [:memberships groupname]))
 
 (defn group-keys [groupname]
   (filter identity
@@ -133,8 +136,8 @@
        (if-let [artifact (maven/jar-to-pom-map {:group_name group-id
                                                 :jar_name artifact-id
                                                 :version version})]
-         (let [deploy (-> @ev/deploys
-                          (get-in [group-id artifact-id version])
+         (let [deploy (-> @ev/cache
+                          (get-in [:deploys group-id artifact-id version])
                           last)]
            (-> artifact
                (assoc :created (:at deploy))
@@ -144,19 +147,21 @@
          ))))
 
 (defn all-projects []
-  (for [f (file-seq (io/file (config :repo)))
-        :when (and (= (.getName f) "maven-metadata.xml")
-                   (not (re-find #"-SNAPSHOT" (.getParent f))))
-        :let [m (maven/read-metadata f)]]
-    {:group_name (.getGroupId m)
-     :jar_name (.getArtifactId m)
-     :created (.lastModified f)}))
+  (for [[group artifacts] (@ev/cache :deploys)
+        [artifacts versions] artifacts]
+    (let [d (first (reverse (sort-by :at (map last (vals versions)))))]
+      {:group_name (:group-id d)
+       :jar_name (:artifact-id d)
+       :created (:at d)})))
 
 (defn recent-jars []
-  (take 5 (sort-by (comp - :created) (all-projects))))
+  (for [d (@ev/cache :recent-deploys)]
+    {:group_name (:group-id d)
+     :jar_name (:artifact-id d)
+     :created (:at d)}))
 
 (defn count-all-projects []
-  (count (all-projects)))
+  (@ev/cache :deploy-count))
 
 (defn count-projects-before [s]
   (count (take-while #(< 0 (compare s %))

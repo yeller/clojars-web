@@ -38,28 +38,35 @@
 (defn event-log-file [type]
   (io/file (config :event-dir) (str (name type) ".clj")))
 
-(defonce users (atom {}))
-(defonce memberships (atom {}))
-(defonce deploys (atom {}))
+(defonce cache (atom {:deploy-count 0}))
 
-(defn add-user [users {:keys [username email] :as user}]
-  (let [original-user (get-in users [username])
+(defn add-user [cache {:keys [username email] :as user}]
+  (let [original-user (get-in cache [:users username])
         original-email (:email original-user)
         user (merge original-user user)]
-    (-> users
-        (assoc username user)
-        (dissoc original-email)
-        (assoc email user))))
+    (-> cache
+        (assoc-in [:users username] user)
+        (update-in [:username-by-email] dissoc original-email)
+        (assoc-in [:username-by-email email] username))))
 
-(defn add-member [memberships {:keys [group-id username]}]
-  (update-in memberships [group-id] (fnil conj #{}) username))
+(defn add-member [cache {:keys [group-id username]}]
+  (-> cache
+      (update-in [:memberships group-id] (fnil conj #{}) username)
+      (update-in [:users username :groups] (fnil conj #{}) group-id)))
 
-(defn add-user-membership [users {:keys [group-id username]}]
-  (update-in users [username :groups] (fnil conj #{}) group-id))
-
-(defn add-deploy [deploys {:keys [group-id artifact-id version] :as deploy}]
-  (update-in deploys [group-id artifact-id version]
-             (fnil conj []) deploy))
+(defn add-deploy [cache {:keys [group-id artifact-id version] :as deploy}]
+  (let [count-change (if (get-in cache [:deploys group-id artifact-id])
+                       identity inc)]
+    (-> cache
+        (update-in [:deploy-count] count-change)
+        (update-in [:deploys group-id artifact-id version]
+                   (fnil conj []) deploy)
+        (update-in [:recent-deploys]
+                   #(->> (or % [])
+                         (remove (fn [x] (and (= (:group-id x) group-id)
+                                             (= (:artifact-id x) artifact-id))))
+                         (cons deploy)
+                         (take 5))))))
 
 (defn record [type event]
   (let [filename (event-log-file type)
@@ -68,10 +75,9 @@
     (locking #'record
       (spit filename content :append true))
     (condp = type
-      :deploy (swap! deploys add-deploy event)
-      :user (swap! users add-user event)
-      :membership (do (swap! memberships add-member event)
-                      (swap! users add-user-membership event)))))
+      :deploy (swap! cache add-deploy event)
+      :user (swap! cache add-user event)
+      :membership (swap! cache add-member event))))
 
 (defn record-deploy [{:keys [group-id artifact-id version]} deployed-by file]
   (when (.endsWith (str file) ".pom")
@@ -87,17 +93,15 @@
 
 (defn load-users [file]
   (with-open [r (io/reader file)]
-    (swap! users #(reduce add-user % (map read-string (line-seq r))))))
+    (swap! cache  #(reduce add-user % (map read-string (line-seq r))))))
 
 (defn load-memberships [file]
   (with-open [r (io/reader file)]
-    (swap! memberships #(reduce add-member % (map read-string (line-seq r))))
-    (swap! users #(reduce add-user-membership %
-                          (map read-string (line-seq r))))))
+    (swap! cache #(reduce add-member % (map read-string (line-seq r))))))
 
 (defn load-deploys [file]
   (with-open [r (io/reader file)]
-    (swap! deploys #(reduce add-deploy % (map read-string (line-seq r))))))
+    (swap! cache #(reduce add-deploy % (map read-string (line-seq r))))))
 
 (defn load []
   (println "Loading users, memberships, and deploys from event logs...")
