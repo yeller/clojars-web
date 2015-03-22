@@ -1,6 +1,6 @@
 (ns clojars.web.dashboard
   (:require [clojars.web.common :refer [html-doc html-doc-with-large-header jar-link group-link tag]]
-            [clojars.db :refer [jars-by-username find-groupnames recent-jars]]
+            [clojars.db :refer [projects-by-username find-groupnames recent-jars]]
             [clojars.stats :as stats]
             [hiccup.element :refer [unordered-list link-to]]))
 
@@ -48,8 +48,8 @@
      [:div.col-md-4.col-lg-4.col-sm-4.col-xs-12
       [:div.dash-palette
        [:h2 "Your Projects"]
-       (if (seq (jars-by-username account))
-         (unordered-list (map jar-link (jars-by-username account)))
+       (if (seq (projects-by-username account))
+         (unordered-list (map jar-link (projects-by-username account)))
          [:p "You don't have any projects, would you like to "
           (link-to "http://wiki.github.com/ato/clojars-web/pushing" "add one")
           "?"])]]

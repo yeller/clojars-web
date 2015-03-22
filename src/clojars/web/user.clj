@@ -1,7 +1,7 @@
 (ns clojars.web.user
   (:require [clojars.config :as config]
             [clojars.db :refer [find-user group-membernames add-user
-                                reserved-names update-user jars-by-username
+                                reserved-names update-user projects-by-username
                                 find-groupnames find-user-by-user-or-email
                                 rand-string split-keys]]
             [clojars.web.common :refer [html-doc error-list jar-link
@@ -126,7 +126,7 @@
               (user :user)]
              [:div.col-sm-6.col-lg-6.col-xs-12.col-md-6
               [:h2 "Projects"]
-              (unordered-list (map jar-link (jars-by-username (user :user))))]
+              (unordered-list (map jar-link (projects-by-username (user :user))))]
              [:div.col-sm-6.col-lg-6.col-xs-12.col-md-6
               [:h2 "Groups"]
               (unordered-list (map group-link (find-groupnames (user :user))))]]))

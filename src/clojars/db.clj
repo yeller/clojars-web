@@ -115,7 +115,7 @@
          (filter (memfn isDirectory))
          (map #(assoc project :jar_name (.getName %))))))
 
-(defn jars-by-username [username]
+(defn projects-by-username [username]
   (concat (for [group (find-groupnames username)]
             (projects-by-groupname group))))
 
