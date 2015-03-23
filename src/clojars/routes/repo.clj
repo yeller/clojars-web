@@ -78,8 +78,8 @@
          (put-req
           groupname
           (let [file (io/file (config :repo) group artifact version filename)
-                info {:group groupname
-                      :name  artifact
+                info {:group-id groupname
+                      :artifact-id artifact
                       :version version}]
             (ev/validate-deploy groupname artifact version filename)
             (db/check-and-add-group account groupname)
