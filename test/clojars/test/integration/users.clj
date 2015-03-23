@@ -197,7 +197,7 @@
       ;;(follow-redirect)
       (within [:div.small-section
                :ul
-               [:li enlive/first-child]
+               [:li enlive/last-child]
                :a]
               (has (text? "fixture")))))
 
