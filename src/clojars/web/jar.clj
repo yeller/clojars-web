@@ -150,7 +150,7 @@
                 [:li
                  [:h4 "Pushed by"]
                  (user-link (:user jar)) " on "
-                 [:span {:title (str (java.util.Date. (:created jar)))} (simple-date (:created jar))]
+                 [:span {:title (str (:created jar))} (simple-date (:created jar))]
                  (if-let [url (commit-url pom-map)]
                    [:span.commit-url " with " (link-to url "this commit")])]
                 [:li
