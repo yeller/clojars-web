@@ -13,8 +13,8 @@
 (deftest pom-to-map-handles-group-and-version-inheritance
   (let [m (pom-to-map (.toString (io/resource "test-maven/test-maven-child.pom")))]
     (is (= "0.0.4" (:version m)))
-    (is (= "fake" (:group m)))
-    (is (= "child" (:name m)))))
+    (is (= "fake" (:group_name m)))
+    (is (= "child" (:jar_name m)))))
      (:dependencies (pom-to-map (.toString (io/resource "test-maven/test-maven.pom"))))
 
 (deftest directory-for-handles-normal-group-name

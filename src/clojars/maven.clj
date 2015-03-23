@@ -8,10 +8,10 @@
            java.io.IOException))
 
 (defn model-to-map [model]
-  {:name (or (.getArtifactId model)
-             (-> model .getParent .getArtifactId))
-   :group (or (.getGroupId model)
-              (-> model .getParent .getGroupId))
+  {:jar_name (or (.getArtifactId model)
+               (-> model .getParent .getArtifactId))
+   :group_name (or (.getGroupId model)
+                 (-> model .getParent .getGroupId))
    :version (or (.getVersion model)
                 (-> model .getParent .getVersion))
    :description (.getDescription model)
